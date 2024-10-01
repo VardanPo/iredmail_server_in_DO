@@ -8,7 +8,6 @@ env:
   ANSIBLE_USER_PASS: ${{secrets.ANSIBLE_USER_PASS}}
   ANSIBLE_PRIVATE_KEY: ${{secrets.ANSIBLE_PRIVATE_KEY}}
   ANSIBLE_PUBLIC_KEY: ${{secrets.ANSIBLE_PUBLIC_KEY}}
-  GH_TOKEN: ${{ secrets.GH_TOKEN }}
  
 jobs:
   build:
