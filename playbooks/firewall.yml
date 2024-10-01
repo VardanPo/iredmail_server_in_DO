@@ -1,0 +1,35 @@
+---
+- hosts: localhost
+  
+  tasks:
+  - name: "Create a Firewall web-rule"
+    community.digitalocean.digital_ocean_firewall:
+      oauth_token: "{{ lookup('ansible.builtin.env', 'DO_API_TOKEN') }}"
+      name: iRedMail-rule
+      state: present
+      inbound_rules:
+        - protocol: "tcp"
+          ports: "1-65535"
+          destinations:
+            addresses: ["0.0.0.0/0", "::/0"]
+        - protocol: "udp"
+          ports: "1-65535"
+          destinations:
+            addresses: ["0.0.0.0/0", "::/0"]
+        - protocol: "icmp"
+          ports: "1-65535"
+          destinations:
+            addresses: ["0.0.0.0/0", "::/0"]
+      outbound_rules:
+        - protocol: "tcp"
+          ports: "1-65535"
+          destinations:
+            addresses: ["0.0.0.0/0", "::/0"]
+        - protocol: "udp"
+          ports: "1-65535"
+          destinations:
+            addresses: ["0.0.0.0/0", "::/0"]
+        - protocol: "icmp"
+          ports: "1-65535"
+          destinations:
+            addresses: ["0.0.0.0/0", "::/0"]

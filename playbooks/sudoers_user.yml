@@ -1,0 +1,50 @@
+---
+- name: create user and copy ssh pub key
+  hosts: all
+  become: true
+  
+  vars:
+    ansible_user: root
+    username: ansible
+    userpass: ${{ lookup('ansible.builtin.env', 'ANSIBLE_USER_PASS') }}
+    usergroup: sudo
+
+  handlers:
+    - name: "Restart_ssh"
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
+
+  tasks:
+    - name: "Creating users"
+      ansible.builtin.user:
+        name: "{{ username }}"
+        state: present
+        shell: /bin/bash
+        password: "{{ userpass }}"
+        update_password: on_create
+        groups: "{{ usergroup }}"
+        append: true
+    
+    - name: "Passwordless sudo"
+      ansible.builtin.lineinfile:
+        path: "/etc/sudoers.d/{{ username }}"
+        state: present
+        create: true
+        line: "{{ username }} ALL=(ALL) NOPASSWD: ALL"
+        validate: 'visudo -cf %s'
+    
+    - name: "Add authorized keys"
+      ansible.posix.authorized_key:
+        user: "{{ username }}"
+        state: present
+        key: "{{ lookup('ansible.builtin.env', 'ANSIBLE_PUBLIC_KEY') }}"
+
+    - name: "Disable root ssh access"
+      ansible.builtin.lineinfile:
+        dest: /etc/ssh/sshd_config
+        state: present
+        regexp: '^PermitRootLogin'
+        line: "PermitRootLogin no"
+        validate: 'sshd -t -f %s'
+      notify: "restart_ssh"

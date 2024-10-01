@@ -1,0 +1,68 @@
+---
+- name: iRedMail Setup on Ubuntu
+  hosts: mailserver
+  become: true
+
+  vars:
+    mail_domain: "task1.local"
+    mail_admin_user: "admin"
+    mail_admin_password: "your_password"  # Replace this with a secure password
+    db_password: "your_db_password"  # Replace this with a secure password
+    iredmail_version: "1.7.1"
+    ansible_distribution_release: "mantic"
+
+  tasks:
+    - name: Update and upgrade the system
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        force_apt_get: true
+
+    - name: Set hostname for the mail server
+      ansible.builtin.hostname:
+        name: "mx.{{ mail_domain }}"
+
+    - name: Add hostname to /etc/hosts
+      ansible.builtin.lineinfile:
+        dest: /etc/hosts
+        line: "127.0.0.1 mx.{{ mail_domain }} mx localhost localhost.localdomain"
+        state: present
+
+    - name: Install essential packages
+      ansible.builtin.apt:
+        name:
+          - wget
+          - curl
+        state: present
+
+    - name: Download iRedMail
+      ansible.builtin.shell: "curl -L https://github.com/iredmail/iRedMail/archive/{{ iredmail_version }}.tar.gz \
+        -o /tmp/iredmail-{{ iredmail_version }}.tar.gz"
+
+    - name: Extract iRedMail
+      ansible.builtin.unarchive:
+        src: "/tmp/iredmail-{{ iredmail_version }}.tar.gz"
+        dest: "/tmp/"
+        remote_src: true
+
+    - name: Copy config
+      ansible.builtin.copy:
+        src: ../config
+        dest: /tmp/iRedMail-{{ iredmail_version }}
+        owner: root
+        group: root
+        mode: '0400'
+
+    - name: install iRedMail
+      ansible.builtin.shell: "AUTO_USE_EXISTING_CONFIG_FILE=y \
+        AUTO_INSTALL_WITHOUT_CONFIRM=y \
+        AUTO_CLEANUP_REMOVE_SENDMAIL=y \
+        AUTO_CLEANUP_REPLACE_FIREWALL_RULES=y \
+        AUTO_CLEANUP_RESTART_FIREWALL=y \
+        AUTO_CLEANUP_REPLACE_MYSQL_CONFIG=y \
+        yes | bash /tmp/iRedMail-1.7.1/iRedMail.sh"
+
+    - name: Reboot the system
+      reboot:
+        msg: "Rebooting after iRedMail installation"
+        pre_reboot_delay: 10

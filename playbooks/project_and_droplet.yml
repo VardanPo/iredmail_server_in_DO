@@ -1,0 +1,60 @@
+---
+- hosts: localhost
+    
+  tasks:
+  - name: "Create project"
+    community.digitalocean.digital_ocean_project:
+      oauth_token: "{{ lookup('ansible.builtin.env', 'DO_API_TOKEN') }}"
+      name: "iRedMail"
+      state: "present"
+      description: "This is a basic iRedMail server"
+      purpose: "WEB Aplication"
+      environment: "Production"
+
+  - name: "Add public ssh key to digitalocean account"
+    community.digitalocean.digital_ocean_sshkey:
+      name: "ansible_key"
+      oauth_token: "{{ lookup('ansible.builtin.env', 'DO_API_TOKEN') }}"
+      ssh_pub_key: "{{ lookup('ansible.builtin.env', 'ANSIBLE_PUBLIC_KEY') }}"
+      state: present
+
+  - name: "Gather information about DigitalOcean SSH keys"
+    community.digitalocean.digital_ocean_sshkey_info:
+      oauth_token: "{{ lookup('ansible.builtin.env', 'DO_API_TOKEN') }}"
+    register: ssh_keys
+
+  - name: "Create iRedMail server"
+    community.digitalocean.digital_ocean_droplet:
+      state: present
+      oauth_token: "{{ lookup('ansible.builtin.env', 'DO_API_TOKEN') }}"
+      name: iRedMail
+      size: s-2vcpu-2gb
+      region: ams3
+      image: ubuntu-20-04-x64
+      wait: true
+      ssh_keys: "{{ (ssh_keys.data | selectattr('name', 'equalto', 'ansible_key')).0.fingerprint | default('<none>', true) }}"
+      project: iRedMail
+      unique_name: true
+      firewall: ['iRedMail-rule']
+    register: iRedMail
+
+  - name: "Show Droplet info"
+    ansible.builtin.debug:
+      msg: |
+        Droplet Name is {{ iRedMail.data.droplet.name }}
+        First Public IPv4 is {{ (iRedMail.data.droplet.networks.v4 | selectattr('type', 'equalto', 'public')).0.ip_address | default('<none>', true) }}
+        First Private IPv4 is {{ (iRedMail.data.droplet.networks.v4 | selectattr('type', 'equalto', 'private')).0.ip_address | default('<none>', true) }}
+
+  - name: "Create host file"
+    ansible.builtin.lineinfile:
+      state: present
+      create: yes
+      path: ./hosts
+      line: |
+        [iRedMail]
+        iRedMail_droplet ansible_host={{ (iRedMail.data.droplet.networks.v4 | selectattr('type', 'equalto', 'public')).0.ip_address | default('<none>', true) }} ansible_user=ansible ansible_ssh_private_key_file=./ansible_private
+
+  - name: "Update GitHub secrets"
+    ansible.builtin.shell:
+      cmd: |
+        gh secret set iRedMail_DATABASE_HOST -b {{ (iRedMail.data.droplet.networks.v4 | selectattr('type', 'equalto', 'private')).0.ip_address | default('<none>', true) }}

@@ -1,0 +1,37 @@
+name: "Create new project"
+
+on:
+  workflow_dispatch:
+
+env:
+  DO_API_TOKEN: ${{secrets.DO_API_TOKEN}}
+  ANSIBLE_USER_PASS: ${{secrets.ANSIBLE_USER_PASS}}
+  ANSIBLE_PRIVATE_KEY: ${{secrets.ANSIBLE_PRIVATE_KEY}}
+  ANSIBLE_PUBLIC_KEY: ${{secrets.ANSIBLE_PUBLIC_KEY}}
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+ 
+jobs:
+  build:
+    name: Build
+
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: export key
+      run: |
+        echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" >> ./ansible_private
+        sudo chmod 0400 ./ansible_private
+        
+    - name: create Firewall rules
+      run: ansible-playbook ./playbooks/firewall.yml
+
+    - name: create new project and droplets
+      run: ansible-playbook ./playbooks/project_and_droplet.yml
+
+    - name: add ansible user
+      run: ansible-playbook -i ./playbooks/hosts ./playbooks/sudoers_user.yml
+    
+    - name: Trigger update workflow
+      run: gh workflow run action_update_existing_project.yml
+

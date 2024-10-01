@@ -1,0 +1,56 @@
+name: update existing project
+
+on:
+    workflow_dispatch:
+
+env:
+  DO_API_TOKEN: ${{secrets.DO_API_TOKEN}}
+  ANSIBLE_USER_PASS: ${{secrets.ANSIBLE_USER_PASS}}
+  ANSIBLE_PRIVATE_KEY: ${{secrets.ANSIBLE_PRIVATE_KEY}}
+  ANSIBLE_PUBLIC_KEY: ${{secrets.ANSIBLE_PUBLIC_KEY}}
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+  ENVIRONMENT: "${{ secrets.ENVIRONMENT }}"
+  VMAIL_DB_BIND_PASSWD: "${{ secrets.VMAIL_DB_BIND_PASSWD }}"
+  VMAIL_DB_ADMIN_PASSWD: "${{ secrets.VMAIL_DB_ADMIN_PASSWD }}"
+  PG_DATABASE_PASSWORD: "${{ secrets.PG_DATABASE_PASSWORD }}"
+  PG_DATABASE_HOST: "${{ secrets.PG_DATABASE_HOST }}"
+  PG_DATABASE_PORT: "${{ secrets.PG_DATABASE_PORT }}"
+  REDIS_HOST: "${{ secrets.REDIS_HOST }}"
+  REDIS_PORT: "${{ secrets.REDIS_PORT }}"
+  REDIS_PASSWORD: "${{ secrets.REDIS_PASSWORD }}"
+  FIREBASE_SERVICE_ACCOUNT_KEY: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}"
+  SENDGRID_API_KEY: "${{ secrets.SENDGRID_API_KEY }}"
+  MAIN_EMAIL: "${{ secrets.MAIN_EMAIL }}"
+  DASHBOARD_URL: "${{ secrets.DASHBOARD_URL }}"
+  AWS_ACCESS_KEY_ID: "${{ secrets.AWS_ACCESS_KEY_ID }}"
+  AWS_SECRET_ACCESS_KEY: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+  AWS_STORAGE_BUCKET_NAME: "${{ secrets.AWS_STORAGE_BUCKET_NAME }}"
+  AWS_S3_REGION_NAME: "${{ secrets.AWS_S3_REGION_NAME }}"
+  PAYMENT_GATEWAY_URI: "${{ secrets.PAYMENT_GATEWAY_URI }}"
+  PAYMENT_GATEWAY_REDIRECT_URI: "${{ secrets.PAYMENT_GATEWAY_REDIRECT_URI }}"
+  PAYMENT_GATEWAY_USERNAME: "${{ secrets.PAYMENT_GATEWAY_USERNAME }}"
+  PAYMENT_GATEWAY_PASSWORD: "${{ secrets.PAYMENT_GATEWAY_PASSWORD }}"
+  SECRET_KEY: "${{ secrets.SECRET_KEY }}"
+  PAYMENT_GATEWAY_PAY_COMPLETE_REDIRECT_URI: "${{ secrets.PAYMENT_GATEWAY_PAY_COMPLETE_REDIRECT_URI }}"
+  DJANGO_SUPERUSER_PASSWORD: "${{ secrets.DJANGO_SUPERUSER_PASSWORD }}"
+
+
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+  
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: export SSH_PRIVATE_KEY_ANSIBLE
+      run: |
+        echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" > ./ansible_private
+        sudo chmod 0400 ./ansible_private
+
+    - name: create hosts file
+      run: ansible-playbook ./playbooks/hosts_file.yml
+
+    - name: install server
+      run: ansible-playbook -i ./playbooks/hosts ./playbooks/iredmail_server.yml

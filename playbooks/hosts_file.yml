@@ -1,0 +1,18 @@
+---
+- hosts: localhost
+    
+  tasks:
+  - name: "Gather information about iRedMail droplet"
+    community.digitalocean.digital_ocean_droplet_info:
+      oauth_token: "{{ lookup('ansible.builtin.env', 'DO_API_TOKEN') }}"
+      name: iRedMail
+    register: iRedMail
+
+  - name: "Create host file"
+    ansible.builtin.lineinfile:
+      state: present
+      create: yes
+      path: ./hosts
+      line: |
+        [iRedMail]
+        iRedMail_droplet ansible_host={{ (iRedMail.data[0].networks.v4 | selectattr('type', 'equalto', 'public')).0.ip_address | default('<none>', true) }} ansible_user=ansible ansible_ssh_private_key_file=./ansible_private
